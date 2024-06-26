@@ -28,19 +28,27 @@ except mysql.connector.Error as err:
 
 cursor = connection.cursor(buffered=True)
 
+username = ""
+password = ""
+role = ""
 
-# while True:
-#     print(1)
-
-
-def checkUser(username, password=None, role=None):
+def checkUser():
     try:
+        username = input("Enter username: ")
+        password = input("Enter password: ")
+        role = input("Enter role, 1: admin, 2: user: ")
+        if role=='1':
+            role = 'admin'
+        elif role=='2':
+            role = 'user'
         cmd = f"SELECT COUNT(username) FROM login WHERE username='{username}' AND BINARY password='{password}' AND role='{role}'"
         cursor.execute(cmd)
         result = cursor.fetchone()
         if result and result[0] >= 1:
+            print("Login successful")
             return True
         else:
+            print("Invalid credentials")
             return False
     except mysql.connector.Error as err:
         print(f"Error: {err}")
@@ -50,18 +58,19 @@ def checkUser(username, password=None, role=None):
         return False
     
 
-username = input("Enter username: ")
-password = input("Enter password: ")
-role = input("Enter role, 1: admin, 2: user: ")
-if role=='1':
-    role = 'admin'
-elif role=='2':
-    role = 'user'
+count = 0
+flag = False
 
-if checkUser(username, password, role):
-        print("Login successful")
-else:
-    print("Invalid credentials")
+while(True):
+    flag = checkUser()
+    count+=1
+    if count==5:
+        cursor.close()
+        connection.close()
+        print("Limitation excedded, connection is closed")
+        break
+    if flag:
+        break
 
 
 
@@ -335,47 +344,115 @@ def checkOut():
         return False
     
 
+import hashlib
+import getpass
+import re
 
-print("Press 1 - Create a New Room")
-print("Press 2 - Show All Rooms")
-print("Press 3 - Show All Vacant Rooms")
-print("Press 4 - Show All Occupied Rooms")
-print("Press 5 - Make a reservation")
-print("Press 6 - Check Out")
-print("Press 7 - Show all reservations")
-if role=='admin':
-    print("Press 8 - Delete user")
-print("Press 9 - Update password")
-print("Press 10 - Add guest")
-print("Press 11 - Exit")
+def check_password_strength(password):
+    print(password)
+    # Check if password contains at least one lowercase letter, one uppercase letter, one digit, and one special character
+    if re.match(r"^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$", password):
+        return True
+    else:
+        return False
+
+def forgotPassword():
+    try:
+        username = input("Enter your username: ")
+        
+        # Verify if the username exists
+        cmd = f"SELECT sec_que, sec_ans FROM login WHERE username='{username}';"
+        cursor.execute(cmd)
+        result = cursor.fetchone()
+        
+        if not result:
+            print("The username does not exist.")
+            return False
+        
+        sec_que, sec_ans = result
+        print(f"Security Question: {sec_que}")
+        
+        # Ask the user to answer the security question
+        user_answer = input("Enter your answer to the security question: ").strip()
+        
+        if user_answer.lower() != sec_ans.lower():
+            print("Incorrect answer to the security question.")
+            return False
+        
+        while True:
+            # Allow the user to set a new password securely
+            new_password = getpass.getpass("Enter your new password: ")
+
+            # if not check_password_strength(new_password):
+            #     print("Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character.")
+            #     continue
+            new_password=new_password.strip()
+            # Check password strength
+            
+            
+            # Hash the new password using SHA-256
+            hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
+            
+            # Update the hashed password in the database
+            cmd = f"UPDATE login SET password='{hashed_password}' WHERE username='{username}';"
+            cursor.execute(cmd)
+            
+            # Commit the transaction
+            connection.commit()
+            
+            print("Password has been reset successfully!")
+            return True
+
+    except mysql.connector.Error as err:
+        print(f"Database Error: {err}")
+        connection.rollback()
+        return False
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return False
 
 
-while True:
-    choice = int(input("Enter your choice : "))
-    match choice:
-        case 1:
-            createRoom()
-        case 2:
-            showRooms()
-        case 3:
-            showVacantRooms()
-        case 4:
-            showOccupiedRooms()
-        case 5:
-            makeReservation()
-        case 6:
-            checkOut()
-        case 7:
-            showReservations()
-        case 8:
-            deleteUser()
-        # case 9:
-        #     updatePassword()
-        case 10:
-            addGuest()
-        case 11:
-            break   
+if flag:
+    print("Press 1 - Create a New Room")
+    print("Press 2 - Show All Rooms")
+    print("Press 3 - Show All Vacant Rooms")
+    print("Press 4 - Show All Occupied Rooms")
+    print("Press 5 - Make a reservation")
+    print("Press 6 - Check Out")
+    print("Press 7 - Show all reservations")
+    if role=='admin':
+        print("Press 8 - Delete user")
+    print("Press 9 - Update password")
+    print("Press 10 - Add guest")
+    print("Press 11 - Exit")
+
+
+    while True:
+        choice = int(input("Enter your choice : "))
+        match choice:
+            case 1:
+                createRoom()
+            case 2:
+                showRooms()
+            case 3:
+                showVacantRooms()
+            case 4:
+                showOccupiedRooms()
+            case 5:
+                makeReservation()
+            case 6:
+                checkOut()
+            case 7:
+                showReservations()
+            case 8:
+                deleteUser()
+            case 9:
+                forgotPassword()
+            case 10:
+                addGuest()
+            case 11:
+                break   
 
 
 
-  
+    
