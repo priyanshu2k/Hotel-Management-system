@@ -34,8 +34,8 @@ class Admin:
 
     def addUser(self):
         try:
-            print(self.role)
-            if self.role!="admin":
+            # print(self.role)
+            if self.role=="user":
                 print("Not an admin")
                 return False
             username = ""
@@ -45,6 +45,7 @@ class Admin:
             username = input("Enter a new username: ")
             password =input("Enter password: ")
             role = input("Enter the user role: ")
+            print(self.role)
 
             hashed_password = hashlib.sha256(password.encode()).hexdigest()
 

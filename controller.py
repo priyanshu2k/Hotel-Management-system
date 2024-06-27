@@ -30,20 +30,16 @@ except mysql.connector.Error as err:
     print(f"Error: {err}")
 
 cursor = connection.cursor(buffered=True)
-
-username = ""
-password = ""
 role = ""
-
 
 room_manager = Room(cursor)
 reservation_manager = Reservation(cursor)
 auth_manager = Auth(cursor)
-admin = Admin(cursor, role)
+
 
 count = 0
 flag = False
-role = ""
+
 
 while(True):
     lst = auth_manager.checkUser()
@@ -58,89 +54,11 @@ while(True):
         role = lst[1]
         break  
 
-# def deleteUser():
-#     try:
-#         username = input("Enter the username to delete: ")
-#         cursor.execute(f"SELECT COUNT(*) FROM login WHERE username = '{username}';")
-#         user_exists = cursor.fetchone()[0]
-
-#         if user_exists:
-#             # Prepare and execute the SQL delete query
-#             cursor.execute(f"DELETE FROM login WHERE username = '{username}';")
-#             connection.commit()
-#             print("User deleted successfully!")
-#         else:
-#             print("User does not exist!")
-
-#         return True
-
-#     except Error as e:
-#         print(f"Error: {e}")
-#         return False
 
 
-# def check_password_strength(password):
-#     print(password)
-#     # Check if password contains at least one lowercase letter, one uppercase letter, one digit, and one special character
-#     if re.match(r"^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$", password):
-#         return True
-#     else:
-#         return False
 
-# def updatePassword():
-#     try:
-#         username = input("Enter your username: ")
-        
-#         # Verify if the username exists
-#         cmd = f"SELECT sec_que, sec_ans FROM login WHERE username='{username}';"
-#         cursor.execute(cmd)
-#         result = cursor.fetchone()
-        
-#         if not result:
-#             print("The username does not exist.")
-#             return False
-        
-#         sec_que, sec_ans = result
-#         print(f"Security Question: {sec_que}")
-        
-#         # Ask the user to answer the security question
-#         user_answer = input("Enter your answer to the security question: ").strip()
-        
-#         if user_answer.lower() != sec_ans.lower():
-#             print("Incorrect answer to the security question.")
-#             return False
-        
-#         while True:
-#             # Allow the user to set a new password securely
-#             new_password = getpass.getpass("Enter your new password: ")
 
-#             # if not check_password_strength(new_password):
-#             #     print("Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character.")
-#             #     continue
-#             new_password=new_password.strip()
-#             # Check password strength
-            
-            
-#             # Hash the new password using SHA-256
-#             hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
-            
-#             # Update the hashed password in the database
-#             cmd = f"UPDATE login SET password='{hashed_password}' WHERE username='{username}';"
-#             cursor.execute(cmd)
-            
-#             # Commit the transaction
-#             connection.commit()
-            
-#             print("Password has been reset successfully!")
-#             return True
-
-#     except mysql.connector.Error as err:
-#         print(f"Database Error: {err}")
-#         connection.rollback()
-#         return False
-#     except Exception as e:
-#         print(f"An unexpected error occurred: {e}")
-#         return False
+admin = Admin(cursor, role)
 
 
 if flag:
