@@ -11,7 +11,7 @@ class Admin:
 
     def deleteUser(self):
         try:
-            if self.role!='admin':
+            if self.role=='user':
                 print("Not an admin")
                 return False
             username = input("Enter the username to delete: ")
