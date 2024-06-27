@@ -1,6 +1,9 @@
 import os
 import mysql.connector
-from mysql.connector import Error
+from modules.room import Room
+from modules.reservation import Reservation
+from modules.auth import Auth
+from modules.admin import Admin
 
 # Configurations
 from config import config
@@ -32,37 +35,19 @@ username = ""
 password = ""
 role = ""
 
-def checkUser():
-    try:
-        username = input("Enter username: ")
-        password = input("Enter password: ")
-        role = input("Enter role, 1: admin, 2: user: ")
-        if role=='1':
-            role = 'admin'
-        elif role=='2':
-            role = 'user'
-        cmd = f"SELECT COUNT(username) FROM login WHERE username='{username}' AND BINARY password='{password}' AND role='{role}'"
-        cursor.execute(cmd)
-        result = cursor.fetchone()
-        if result and result[0] >= 1:
-            print("Login successful")
-            return True
-        else:
-            print("Invalid credentials")
-            return False
-    except mysql.connector.Error as err:
-        print(f"Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
-    
+
+room_manager = Room(cursor)
+reservation_manager = Reservation(cursor)
+auth_manager = Auth(cursor)
+admin = Admin(cursor, role)
 
 count = 0
 flag = False
+role = ""
 
 while(True):
-    flag = checkUser()
+    lst = auth_manager.checkUser()
+    flag = lst[0]
     count+=1
     if count==5:
         cursor.close()
@@ -70,346 +55,92 @@ while(True):
         print("Limitation excedded, connection is closed")
         break
     if flag:
-        break
+        role = lst[1]
+        break  
+
+# def deleteUser():
+#     try:
+#         username = input("Enter the username to delete: ")
+#         cursor.execute(f"SELECT COUNT(*) FROM login WHERE username = '{username}';")
+#         user_exists = cursor.fetchone()[0]
+
+#         if user_exists:
+#             # Prepare and execute the SQL delete query
+#             cursor.execute(f"DELETE FROM login WHERE username = '{username}';")
+#             connection.commit()
+#             print("User deleted successfully!")
+#         else:
+#             print("User does not exist!")
+
+#         return True
+
+#     except Error as e:
+#         print(f"Error: {e}")
+#         return False
 
 
+# def check_password_strength(password):
+#     print(password)
+#     # Check if password contains at least one lowercase letter, one uppercase letter, one digit, and one special character
+#     if re.match(r"^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$", password):
+#         return True
+#     else:
+#         return False
 
-# create room
-def createRoom():
-    try:
-        room_no = int(input("Enter room number: "))
-        price = int(input("Enter price: "))
-        room_type = input("Enter room type, S: single, D: double: ").strip().upper()
+# def updatePassword():
+#     try:
+#         username = input("Enter your username: ")
         
-        if room_type not in ('S', 'D'):
-            raise ValueError("Invalid room type. Please enter 'S' for single or 'D' for double.")
-
-        cmd = f"INSERT INTO rooms(room_no, price, room_type) VALUES('{room_no}', {price}, '{room_type}');"
-        cursor.execute(cmd)
+#         # Verify if the username exists
+#         cmd = f"SELECT sec_que, sec_ans FROM login WHERE username='{username}';"
+#         cursor.execute(cmd)
+#         result = cursor.fetchone()
         
-        if cursor.rowcount == 0:
-            return False
+#         if not result:
+#             print("The username does not exist.")
+#             return False
         
-        print("New room created")
-        return True
-
-    except ValueError as ve:
-        print(f"Value Error: {ve}")
-        return False
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False      
-
-
-
-# show rooms
-
-def showRooms():
-    try:
-        cmd = "SELECT id, room_no, room_type, price, created_at FROM rooms;"
-        cursor.execute(cmd)
+#         sec_que, sec_ans = result
+#         print(f"Security Question: {sec_que}")
         
-        if cursor.rowcount == 0:
-            return False
+#         # Ask the user to answer the security question
+#         user_answer = input("Enter your answer to the security question: ").strip()
         
-        res = cursor.fetchall()
-        for row in res:
-            print(row)
-        return True
-    
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
-    
-
- # show vacant rooms   
-
-def showVacantRooms():
-    try:
-        cmd = "SELECT id, room_no, room_type, price, created_at FROM rooms where currently_booked=0;"
-        cursor.execute(cmd)
+#         if user_answer.lower() != sec_ans.lower():
+#             print("Incorrect answer to the security question.")
+#             return False
         
-        if cursor.rowcount == 0:
-            return False
-        
-        res = cursor.fetchall()
-        for row in res:
-            print(row)
-        return True
-    
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
+#         while True:
+#             # Allow the user to set a new password securely
+#             new_password = getpass.getpass("Enter your new password: ")
 
-
-
-# show occupied rooms
-def showOccupiedRooms():
-    try:
-        cmd = "SELECT id, room_no, room_type, price, created_at FROM rooms where currently_booked=1;"
-        cursor.execute(cmd)
-        
-        if cursor.rowcount == 0:
-            return False
-        
-        res = cursor.fetchall()
-        for row in res:
-            print(row)
-        return True
-    
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
-
-
-# add guest
-def addGuest():
-    try:
-        name = input("Enter guest name: ")
-        address = input("Enter guest address: ")
-        email_id = input("Enter guest email id: ")
-        phone = int(input("Enter guest mobile number: "))
-
-        # Prepare the SQL query
-        cmd = f"INSERT INTO guests(name, address, email_id, phone) VALUES('{name}', '{address}', '{email_id}', {phone});"
-        
-        # Execute the SQL query
-        cursor.execute(cmd)
-        
-        # Check if the guest was added
-        if cursor.rowcount == 0:
-            return False
-        
-        print("Guest added successfully!")
-        return True
-
-    except ValueError as ve:
-        print(f"Value Error: {ve}")
-        return False
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
-
-
-# add reservation
-
-def makeReservation():
-    g_id = input("Enter guest ID: ")
-    meal = input("Enter meal option (0 or 1): ")
-    r_id = input("Enter room ID: ")
-    r_type = input("Enter room type, S: single, D: double: ").strip().upper()
-    
-    try:
-        # Check if guest exists
-        cursor.execute("SELECT id FROM guests WHERE id = %s", (g_id,))
-        guest = cursor.fetchone()
-        if not guest:
-            print("Error: Guest ID does not exist.")
-            return False
-
-        # Check if room exists and is not currently booked
-        cursor.execute("SELECT currently_booked FROM rooms WHERE id = %s", (r_id,))
-        room = cursor.fetchone()
-        if not room:
-            print("Error: Room ID does not exist.")
-            return False
-        if room[0] == 1:
-            print("Error: Room is currently booked.")
-            return False
-
-        # Insert reservation
-        cursor.execute(
-            "INSERT INTO reservations (g_id, meal, r_id, r_type) VALUES (%s, %s, %s, %s)",
-            (g_id, meal, r_id, r_type)
-        )
-        
-        # Check if the reservation was added
-        if cursor.rowcount == 0:
-            print("Error: Reservation failed.")
-            return False
-
-        # Commit the transaction
-        connection.commit()
-
-        print("Reservation done successfully!")
-        return True
-
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
-
-
-#  show reservations
-
-def showReservations():
-    try:
-        cmd = "SELECT id, g_id, r_id, r_type, check_in FROM reservations where check_out is NULL;"
-        cursor.execute(cmd)
-        
-        if cursor.rowcount == 0:
-            return False
-        
-        res = cursor.fetchall()
-        for row in res:
-            print(row)
-        return True
-    
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False        
-
-# delete user
-
-def deleteUser():
-    try:
-        username = input("Enter the username to delete: ")
-        cursor.execute(f"SELECT COUNT(*) FROM login WHERE username = '{username}';")
-        user_exists = cursor.fetchone()[0]
-
-        if user_exists:
-            # Prepare and execute the SQL delete query
-            cursor.execute(f"DELETE FROM login WHERE username = '{username}';")
-            connection.commit()
-            print("User deleted successfully!")
-        else:
-            print("User does not exist!")
-
-        return True
-
-    except Error as e:
-        print(f"Error: {e}")
-        return False
-
-
-#  check out
-
-def checkOut():
-    try:
-        guest_id = int(input("Enter the guest id: "))
-
-        # Check if the guest exists and has a reservation
-        cmd = f"SELECT r_id FROM reservations WHERE g_id={guest_id} AND check_out is NULL;"
-        cursor.execute(cmd)
-        result = cursor.fetchone()
-
-        if not result:
-            print("No active reservation found for this guest.")
-            return False
-
-        room_no = result[0]
-
-        # Update the reservation to indicate the guest has checked out
-        cmd = f"UPDATE reservations SET check_out=NOW() WHERE g_id={guest_id} AND r_id={room_no};"
-        cursor.execute(cmd)
-
-        # Update the room status to vacant
-        cmd = f"UPDATE rooms SET currently_booked=0 WHERE id={room_no};"
-        cursor.execute(cmd)
-
-        connection.commit()  # Commit the changes to the database
-
-        print(f"Guest {guest_id} has checked out from room {room_no}.")
-        return True
-
-    except ValueError:
-        print("Invalid input. Please enter a valid guest id.")
-        return False
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
-    
-
-import hashlib
-import getpass
-import re
-
-def check_password_strength(password):
-    print(password)
-    # Check if password contains at least one lowercase letter, one uppercase letter, one digit, and one special character
-    if re.match(r"^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$", password):
-        return True
-    else:
-        return False
-
-def forgotPassword():
-    try:
-        username = input("Enter your username: ")
-        
-        # Verify if the username exists
-        cmd = f"SELECT sec_que, sec_ans FROM login WHERE username='{username}';"
-        cursor.execute(cmd)
-        result = cursor.fetchone()
-        
-        if not result:
-            print("The username does not exist.")
-            return False
-        
-        sec_que, sec_ans = result
-        print(f"Security Question: {sec_que}")
-        
-        # Ask the user to answer the security question
-        user_answer = input("Enter your answer to the security question: ").strip()
-        
-        if user_answer.lower() != sec_ans.lower():
-            print("Incorrect answer to the security question.")
-            return False
-        
-        while True:
-            # Allow the user to set a new password securely
-            new_password = getpass.getpass("Enter your new password: ")
-
-            # if not check_password_strength(new_password):
-            #     print("Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character.")
-            #     continue
-            new_password=new_password.strip()
-            # Check password strength
+#             # if not check_password_strength(new_password):
+#             #     print("Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character.")
+#             #     continue
+#             new_password=new_password.strip()
+#             # Check password strength
             
             
-            # Hash the new password using SHA-256
-            hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
+#             # Hash the new password using SHA-256
+#             hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
             
-            # Update the hashed password in the database
-            cmd = f"UPDATE login SET password='{hashed_password}' WHERE username='{username}';"
-            cursor.execute(cmd)
+#             # Update the hashed password in the database
+#             cmd = f"UPDATE login SET password='{hashed_password}' WHERE username='{username}';"
+#             cursor.execute(cmd)
             
-            # Commit the transaction
-            connection.commit()
+#             # Commit the transaction
+#             connection.commit()
             
-            print("Password has been reset successfully!")
-            return True
+#             print("Password has been reset successfully!")
+#             return True
 
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        connection.rollback()
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
+#     except mysql.connector.Error as err:
+#         print(f"Database Error: {err}")
+#         connection.rollback()
+#         return False
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {e}")
+#         return False
 
 
 if flag:
@@ -420,37 +151,39 @@ if flag:
     print("Press 5 - Make a reservation")
     print("Press 6 - Check Out")
     print("Press 7 - Show all reservations")
-    if role=='admin':
-        print("Press 8 - Delete user")
-    print("Press 9 - Update password")
-    print("Press 10 - Add guest")
-    print("Press 11 - Exit")
+    print("Press 8 - Delete user(admin only)")
+    print("Press 9 - Add user(admin only)")
+    print("Press 10 - Update password")
+    print("Press 11 - Add guest")
+    print("Press 12 - Exit")
 
 
     while True:
         choice = int(input("Enter your choice : "))
         match choice:
             case 1:
-                createRoom()
+                room_manager.createRoom()
             case 2:
-                showRooms()
+                room_manager.showRooms()
             case 3:
-                showVacantRooms()
+                room_manager.showVacantRooms()
             case 4:
-                showOccupiedRooms()
+                room_manager.showOccupiedRooms()
             case 5:
-                makeReservation()
+                reservation_manager.makeReservation()
             case 6:
-                checkOut()
+                reservation_manager.checkOut()
             case 7:
-                showReservations()
+                reservation_manager.showReservations()
             case 8:
-                deleteUser()
+                admin.deleteUser()
             case 9:
-                forgotPassword()
+                admin.addUser()    
             case 10:
-                addGuest()
+                auth_manager.updatePassword()
             case 11:
+                reservation_manager.addGuest()
+            case 12:
                 break   
 
 
